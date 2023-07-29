@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "changelog_generator"
+version = "0.0.1"
+description = "Prism Launcher changelog generator"
+authors = ["Sefa Eyeoglu <contact@scrumplex.net>"]
+license = "AGPL-3.0-only"
+readme = "README.md"
+repository = "https://github.com/PrismLauncher/changelog-generator"
+documentation = "https://github.com/PrismLauncher/changelog-generator"
+keywords = ["changelog", "prism", "launcher", "github"]
+
+[tool.poetry.scripts]
+changelog-generator = "changelog_generator.__main__:main"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+pygithub = "^1.59.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

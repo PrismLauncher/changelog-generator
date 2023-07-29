@@ -1,12 +1,16 @@
 from github import Github
 from github.Label import Label
 from github.PullRequest import PullRequest
+from github.Repository import Repository
+
 from typing import List
 import re
+import os
+import argparse
 
-REPO = "PrismLauncher/PrismLauncher"
-MILESTONE = "8.0"
-TOKEN = os.environ["GITHUB_TOKEN"]
+from .ghutil import find_milestone_by_name, get_prs
+from .util import pr_link, author_link, human_list
+
 
 LABEL_PREFIX = "changelog:"
 MERGED_CATEGORY = "merged"
@@ -20,24 +24,6 @@ CATEGORY_MAP = [
 ]
 
 
-def pr_link(pr: PullRequest):
-    return f"[#{pr.number}](https://github.com/{REPO}/pull/{pr.number})"
-
-
-def author_link(author: str):
-    return f"[@{author}](https://github.com/{author})"
-
-
-def human_list(x: List[str]):
-    if len(x) < 1:
-        return "WTF??"
-    elif len(x) == 1:
-        return x[0]
-    y = ", ".join(x[:-1])
-    y += f" and {x[-1]}"
-    return y
-
-
 entries = []
 
 
@@ -45,6 +31,9 @@ class Change:
     def __init__(self, prs: List[PullRequest], category: str):
         self.prs = prs
         self.category = category
+
+    def merge(self, other: Change):
+        this.prs += change.prs
 
     def pr(self):
         return self.prs[0]
@@ -87,27 +76,38 @@ def categorize_pr(pr: PullRequest):
     return Change([pr], category)
 
 
-if __name__ == "__main__":
-    output = []
+def merge_child_changes(children: List[Change], parents: List[Change]):
+    for change in merged_changes:
+        m = re.match(PARENT_PATTERN, change.pr().body)
 
-    g = Github(TOKEN)
+        assert m, f"'{change}' does not define a parent"
 
-    repo = g.get_repo(REPO)
+        parent_number = int(m.group(1))
 
-    release_milestone = None
+        found_parent = False
+        for other_change in top_level_changes:
+            if other_change.number() == parent_number:
+                other_change.merge(change)
+                found_parent = True
+                break
+        assert (
+            found_parent
+        ), f"'{change}' parent (#{parent_number}) was not found in this milestone"
 
-    for milestone in repo.get_milestones():
-        if milestone.title == MILESTONE:
-            release_milestone = milestone
-            break
 
-    issues = repo.get_issues(milestone=release_milestone, state="all")
-    prs = map(
-        lambda issue: issue.as_pull_request(),
-        [*filter(lambda issue: issue.pull_request, issues)],
-    )
-    merged_prs = [*filter(lambda pr: pr.merged, prs)]
-    changes = [*map(categorize_pr, merged_prs)]
+def generate(repo_name: str, milestone: str, token: str):
+    g = Github(token)
+
+    repo = g.get_repo(repo_name)
+
+    release_milestone = find_milestone_by_name(repo, milestone)
+
+    assert (
+        release_milestone is not None
+    ), f"Milestone {milestone} not found in repository {repo.url}"
+
+    prs = get_prs(repo, milestone=release_milestone, state="all")
+    changes = [*map(categorize_pr, prs)]
 
     merged_changes = [
         *filter(lambda change: change.category == MERGED_CATEGORY, changes)
@@ -116,24 +116,7 @@ if __name__ == "__main__":
         *filter(lambda change: change.category != MERGED_CATEGORY, changes)
     ]
 
-    for change in merged_changes:
-        m = re.match(PARENT_PATTERN, change.pr().body)
-
-        if m is not None:
-            parent_number = int(m.group(1))
-
-            found_parent = False
-            for other_change in top_level_changes:
-                if other_change.number() == parent_number:
-                    other_change.prs += change.prs
-                    found_parent = True
-                    break
-            if not found_parent:
-                print(
-                    f"'{change}' parent (#{parent_number}) was not found in this milestone"
-                )
-        else:
-            print(f"'{change}' does not define a parent")
+    merge_child_changes(merged_changes, top_level_changes)
 
     final_changes = sorted(top_level_changes, key=lambda x: x.title())
     print("---")
@@ -147,3 +130,19 @@ if __name__ == "__main__":
                 print(change.changelog_entry())
 
         print()
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("repo")
+    parser.add_argument("milestone")
+
+    args = parser.parse_args()
+
+    token = os.environ["GITHUB_TOKEN"]
+
+    generate(args.repo, args.milestone, token)
+
+
+if __name__ == "__main__":
+    main()

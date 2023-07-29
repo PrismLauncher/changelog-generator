@@ -4,6 +4,7 @@
   ...
 }: {
   perSystem = {
+    self',
     system,
     pkgs,
     ...
@@ -24,13 +25,10 @@
       };
     };
 
-    devShells.default = let
-      pythonEnv = pkgs.python3.withPackages (p: with p; [pygithub]);
-    in
-      pkgs.mkShell {
-        inherit (self.checks.${system}.pre-commit-check) shellHook;
-        packages = [pythonEnv];
-      };
+    devShells.default = pkgs.mkShell {
+      inherit (self'.checks.pre-commit-check) shellHook;
+      inputsFrom = [self'.packages.default];
+    };
 
     formatter = pkgs.alejandra;
   };
