@@ -32,8 +32,8 @@ class Change:
         self.prs = prs
         self.category = category
 
-    def merge(self, other: Change):
-        this.prs += change.prs
+    def merge(self, other):
+        self.prs += other.prs
 
     def pr(self):
         return self.prs[0]
@@ -69,6 +69,7 @@ def get_category_from_labels(labels: List[Label]):
     for label in labels:
         if label.name.startswith(LABEL_PREFIX):
             return label.name[len(LABEL_PREFIX) :]
+    return "unknown"
 
 
 def categorize_pr(pr: PullRequest):
@@ -77,7 +78,7 @@ def categorize_pr(pr: PullRequest):
 
 
 def merge_child_changes(children: List[Change], parents: List[Change]):
-    for change in merged_changes:
+    for change in children:
         m = re.match(PARENT_PATTERN, change.pr().body)
 
         assert m, f"'{change}' does not define a parent"
@@ -85,7 +86,7 @@ def merge_child_changes(children: List[Change], parents: List[Change]):
         parent_number = int(m.group(1))
 
         found_parent = False
-        for other_change in top_level_changes:
+        for other_change in parents:
             if other_change.number() == parent_number:
                 other_change.merge(change)
                 found_parent = True
