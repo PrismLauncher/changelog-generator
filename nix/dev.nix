@@ -14,7 +14,10 @@
         src = self;
         hooks = {
           markdownlint.enable = true;
-          prettier.enable = true;
+          prettier = {
+            enable = true;
+            excludes = ["flake.lock"];
+          };
 
           alejandra.enable = true;
           deadnix.enable = true;
