@@ -13,7 +13,7 @@ keywords = ["changelog", "prism", "launcher", "github"]
 changelog-generator = "changelog_generator.__main__:main"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.12"
+python = ">=3.12,<3.13"
 pygithub = "^2.1.1"
 
 [build-system]
